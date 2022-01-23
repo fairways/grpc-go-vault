@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
-
+	"crypto/tls"
 	"fmt"
 	"net"
 
-	vault "github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	pb "github.com/jamiewhitney/grpc-go-vault/hello"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"github.com/hashicorp/vault/sdk/helper/certutil"
+	pb "github.com/jamiewhitney/grpc-go-vault/hello"
+	vault "github.com/hashicorp/vault/api"
+
 )
 
 type server struct {
@@ -50,6 +51,7 @@ func main() {
 		fmt.Errorf("Could not get TLS config: %s", err)
 	}
 
+	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
 	// grpc server

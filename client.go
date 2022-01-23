@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
-	pb "github.com/jamiewhitney/grpc-go-vault/hello"
+	"crypto/tls"
+	"fmt"
 	"log"
 	"time"
 
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"google.golang.org/grpc/credentials"
-
-	"fmt"
+	pb "github.com/jamiewhitney/grpc-go-vault/hello"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
