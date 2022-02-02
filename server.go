@@ -32,7 +32,7 @@ func main() {
 	vaultClient.SetToken("root")
 
 	secret, err := vaultClient.Logical().Write("grpc/issue/hello-service", map[string]interface{}{
-		"common_name": "grpc.techops.blog",
+		"common_name": "grpc.example.com",
 		"alt_names":   "localhost",
 	})
 	if err != nil {
