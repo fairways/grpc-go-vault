@@ -23,15 +23,15 @@ resource "vault_pki_secret_backend_root_cert" "main" {
   depends_on            = [vault_mount.pki]
   backend               = vault_mount.pki.path
   type                  = "internal"
-  common_name           = "techops.blog"
+  common_name           = "example.com"
   ttl                   = "315360000"
   format                = "pem"
   private_key_format    = "der"
   key_type              = "rsa"
   key_bits              = 4096
   exclude_cn_from_sans  = true
-  ou                    = "techops"
-  organization          = "techops.blog"
+  ou                    = "example org"
+  organization          = "example.com"
 }
 
 resource "vault_pki_secret_backend_role" "role" {
@@ -41,7 +41,7 @@ resource "vault_pki_secret_backend_role" "role" {
   allow_ip_sans    = true
   key_type         = "rsa"
   key_bits         = 4096
-  allowed_domains  = ["techops.blog"]
+  allowed_domains  = ["example.com"]
   allow_subdomains = true
 
 }
