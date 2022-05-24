@@ -24,6 +24,7 @@ type server struct {
 var (
 	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
 	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
+	authToken          string
 )
 
 func main() {
@@ -62,6 +63,16 @@ func main() {
 	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
+	// token
+	authTokenSecret, err := vaultClient.Logical().Read("hello-service/data/token")
+	if err != nil {
+		fmt.Errorf("failed to retrieve token")
+	}
+
+	authTokenData := authTokenSecret.Data["data"].(map[string]interface{})
+
+	authToken = authTokenData["token"].(string)
+
 	// grpc server
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 3000))
@@ -86,7 +97,7 @@ func valid(authorization []string) bool {
 		return false
 	}
 	token := strings.TrimPrefix(authorization[0], "Bearer ")
-	return token == "some-secret-token"
+	return token == authToken
 }
 
 func ensureValidToken(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {

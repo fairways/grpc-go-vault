@@ -15,6 +15,10 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+var (
+	clientToken string
+)
+
 func main() {
 	//vault
 
@@ -49,6 +53,16 @@ func main() {
 
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
+	//// token
+	authTokenSecret, err := vaultClient.Logical().Read("hello-service/data/token")
+	if err != nil {
+		fmt.Errorf("failed to retrieve token")
+	}
+
+	authTokenData := authTokenSecret.Data["data"].(map[string]interface{})
+
+	clientToken = authTokenData["token"].(string)
+
 	//grpc
 
 	x := "Jamie"
@@ -73,6 +87,6 @@ func main() {
 
 func fetchToken() *oauth2.Token {
 	return &oauth2.Token{
-		AccessToken: "some-secret-token2",
+		AccessToken: clientToken,
 	}
 }
