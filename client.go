@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
+	"google.golang.org/grpc/credentials/oauth"
 	"log"
 	"time"
 
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
+	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -51,8 +52,8 @@ func main() {
 	//grpc
 
 	x := "Jamie"
-
-	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials))
+	perRPC := oauth.NewOauthAccess(fetchToken())
+	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
 	if err != nil {
 		log.Fatalf("did not connect: %s", err)
 	}
@@ -67,5 +68,11 @@ func main() {
 		}
 		log.Printf("Response from Server: %s", response.GetName())
 		time.Sleep(2 * time.Second)
+	}
+}
+
+func fetchToken() *oauth2.Token {
+	return &oauth2.Token{
+		AccessToken: "some-secret-token2",
 	}
 }

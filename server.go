@@ -4,19 +4,27 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"net"
+	"strings"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
-	vault "github.com/hashicorp/vault/api"
-
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type server struct {
 	pb.UnimplementedHelloServiceServer
 }
+
+var (
+	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
+	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
+)
 
 func main() {
 
@@ -60,7 +68,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer(grpc.Creds(tlsCredentials))
+	s := grpc.NewServer(grpc.Creds(tlsCredentials), grpc.UnaryInterceptor(ensureValidToken))
 	pb.RegisterHelloServiceServer(s, &server{})
 
 	if err := s.Serve(lis); err != nil {
@@ -69,6 +77,25 @@ func main() {
 }
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRequest, error) {
-	fmt.Printf("Received: %v", in.GetName())
+	fmt.Printf("Received: %v\n", in.GetName())
 	return &pb.HelloRequest{Name: "Hello " + in.GetName()}, nil
+}
+
+func valid(authorization []string) bool {
+	if len(authorization) < 1 {
+		return false
+	}
+	token := strings.TrimPrefix(authorization[0], "Bearer ")
+	return token == "some-secret-token"
+}
+
+func ensureValidToken(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, errMissingMetadata
+	}
+	if !valid(md["authorization"]) {
+		return nil, errInvalidToken
+	}
+	return handler(ctx, req)
 }

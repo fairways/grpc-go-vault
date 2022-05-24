@@ -45,3 +45,17 @@ resource "vault_pki_secret_backend_role" "role" {
   allow_subdomains = true
 
 }
+
+resource "vault_mount" "hello-service" {
+  path        = "hello-service"
+  type        = "kv-v2"
+}
+
+resource "vault_generic_secret" "hello-service-token" {
+  path = "${vault_mount.hello-service.path}/token"
+  data_json = <<EOT
+{
+ "token": "secret-token"
+}
+EOT
+}
