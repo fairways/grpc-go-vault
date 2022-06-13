@@ -87,6 +87,17 @@ type MyCustomClaims struct {
 	jwt.StandardClaims
 }
 
+func ensureValidToken(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, errMissingMetadata
+	}
+	if !valid(md["authorization"]) {
+		return nil, errInvalidToken
+	}
+	return handler(ctx, req)
+}
+
 func valid(authorization []string) bool {
 	if len(authorization) < 1 {
 		return false
@@ -113,23 +124,12 @@ func valid(authorization []string) bool {
 
 	claims, _ := token.Claims.(*MyCustomClaims)
 	fmt.Println(claims)
-	if !claimsStruct.HasScope("read:users") {
+	if !claimsStruct.HasScope("read:usders") {
 		fmt.Println("forbidden")
-	} else {
-		fmt.Println("access granted")
+		return false
 	}
+	fmt.Println("access granted")
 	return true
-}
-
-func ensureValidToken(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, errMissingMetadata
-	}
-	if !valid(md["authorization"]) {
-		return nil, errInvalidToken
-	}
-	return handler(ctx, req)
 }
 
 func (c MyCustomClaims) HasScope(expectedScope string) bool {
