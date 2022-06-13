@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"google.golang.org/grpc/credentials/oauth"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"time"
 
 	vault "github.com/hashicorp/vault/api"
@@ -13,11 +17,22 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"math/rand"
 )
 
-var (
-	clientToken string
-)
+type TokenReponse struct {
+	AccessToken string `json:"access_token"`
+	Scope       string `json:"scope"`
+	ExpiresIn   int    `json:"expires_in"`
+	TokenType   string `json:"token_type"`
+}
+
+type TokenRequest struct {
+	ClientId     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	Audience     string `json:"audience"`
+	GrantType    string `json:"grant_type"`
+}
 
 func main() {
 	//vault
@@ -53,20 +68,24 @@ func main() {
 
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
-	//// token
-	authTokenSecret, err := vaultClient.Logical().Read("hello-service/data/token")
+	// token
+	auth0ClientId, err := vaultClient.Logical().Read("hello-service/data/auth0")
 	if err != nil {
 		fmt.Errorf("failed to retrieve token")
 	}
 
-	authTokenData := authTokenSecret.Data["data"].(map[string]interface{})
+	authTokenData := auth0ClientId.Data["data"].(map[string]interface{})
 
-	clientToken = authTokenData["token"].(string)
+	clientToken := authTokenData["id"].(string)
+
+	clientSecret := authTokenData["secret"].(string)
 
 	//grpc
 
 	x := "Jamie"
-	perRPC := oauth.NewOauthAccess(fetchToken())
+	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, "", "", "client_credentials"))
+	fmt.Println("got the token boy")
+	fmt.Printf("%+v", perRPC)
 	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
 	if err != nil {
 		log.Fatalf("did not connect: %s", err)
@@ -81,12 +100,41 @@ func main() {
 			log.Fatalf("Error when calling SayHello: %s", err)
 		}
 		log.Printf("Response from Server: %s", response.GetName())
-		time.Sleep(2 * time.Second)
+		n := rand.Intn(10)
+		time.Sleep(time.Duration(n) * time.Second)
 	}
 }
 
-func fetchToken() *oauth2.Token {
+func fetchToken(id string, secret string, url string, audience string, grantType string) *oauth2.Token {
+	var tokenObject TokenReponse
+
+	data := TokenRequest{
+		ClientId:     id,
+		ClientSecret: secret,
+		Audience:     audience,
+		GrantType:    grantType,
+	}
+
+	payload, _ := json.Marshal(data)
+
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+
+	req.Header.Add("content-type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	defer res.Body.Close()
+	responseData, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	json.Unmarshal(responseData, &tokenObject)
+	fmt.Printf("%s", responseData)
 	return &oauth2.Token{
-		AccessToken: clientToken,
+		AccessToken: tokenObject.AccessToken,
 	}
 }

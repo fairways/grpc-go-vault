@@ -37,7 +37,7 @@ resource "vault_pki_secret_backend_root_cert" "main" {
 resource "vault_pki_secret_backend_role" "role" {
   backend          = vault_mount.pki.path
   name             = "hello-service"
-  ttl              = "60"
+  ttl              = "1800"
   allow_ip_sans    = true
   key_type         = "rsa"
   key_bits         = 4096
@@ -52,10 +52,19 @@ resource "vault_mount" "hello-service" {
 }
 
 resource "vault_generic_secret" "hello-service-token" {
-  path = "${vault_mount.hello-service.path}/token"
+  path = "${vault_mount.hello-service.path}/auth0"
   data_json = <<EOT
 {
- "token": "secret-token"
+ "id": "${var.auth0_id}",
+ "secret": "${var.auth0_secret}"
 }
 EOT
+}
+
+variable "auth0_id" {
+  type=string
+}
+
+variable "auth0_secret" {
+  type=string
 }
