@@ -25,6 +25,7 @@ type server struct {
 
 var (
 	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
+	errInvalidScope    = status.Errorf(codes.Unauthenticated, "invalid sope")
 	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
 	authToken          string
 	Key                *rsa.PublicKey
@@ -141,13 +142,14 @@ func valid(authorization []string) bool {
 		fmt.Errorf("invalid token: %w", err)
 	}
 
-	claims, _ := token.Claims.(*MyCustomClaims)
-	fmt.Println(claims)
-	if !claimsStruct.HasScope("read:messages") {
-		fmt.Println("forbidden")
+	if !token.Valid {
 		return false
 	}
-	fmt.Println("access granted")
+
+	if !claimsStruct.HasScope("read:messages") {
+		fmt.Println(errInvalidScope)
+		return false
+	}
 	return true
 }
 

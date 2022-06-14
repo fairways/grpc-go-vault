@@ -56,7 +56,9 @@ resource "vault_generic_secret" "hello-service-token" {
   data_json = <<EOT
 {
  "id": "${var.auth0_id}",
- "secret": "${var.auth0_secret}"
+ "secret": "${var.auth0_secret}",
+ "domain": "${var.auth0_domain}",
+ "audience": "${var.auth0_audience}"
 }
 EOT
 }
@@ -67,4 +69,12 @@ variable "auth0_id" {
 
 variable "auth0_secret" {
   type=string
+}
+
+variable "auth0_domain" {
+  type = string
+}
+
+variable "auth0_audience" {
+  type = string
 }
