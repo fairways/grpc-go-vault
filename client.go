@@ -80,10 +80,14 @@ func main() {
 
 	clientSecret := authTokenData["secret"].(string)
 
+	url := authTokenData["url"].(string)
+
+	audience := authTokenData["audience"].(string)
+
 	//grpc
 
 	x := "Jamie"
-	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, "", "", "client_credentials"))
+	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
 	fmt.Println("got the token boy")
 	fmt.Printf("%+v", perRPC)
 	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))

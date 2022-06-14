@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
 	"github.com/golang-jwt/jwt"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
+	"github.com/prometheus/common/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -25,6 +27,7 @@ var (
 	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
 	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
 	authToken          string
+	Key                *rsa.PublicKey
 )
 
 func main() {
@@ -62,6 +65,22 @@ func main() {
 
 	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	tlsCredentials := credentials.NewTLS(tlsConfig)
+
+	// JWT Public Cert
+	keyData, err := vaultClient.Logical().Read("hello-service/data/auth0")
+	if err != nil {
+		log.Error(err)
+	}
+
+	keyParse := keyData.Data["data"].(map[string]interface{})
+
+	keyYeah := keyParse["public_cert"].(string)
+
+	Key, err = jwt.ParseRSAPublicKeyFromPEM([]byte(keyYeah))
+	if err != nil {
+		log.Error(err)
+	}
+	fmt.Println(Key)
 
 	// grpc server
 
@@ -109,12 +128,12 @@ func valid(authorization []string) bool {
 		accessToken,
 		&claimsStruct,
 		func(token *jwt.Token) (interface{}, error) {
-			_, ok := token.Method.(*jwt.SigningMethodHMAC)
+			_, ok := token.Method.(*jwt.SigningMethodRSA)
 			if !ok {
 				return nil, fmt.Errorf("unexpected token signing method")
 			}
 
-			return []byte(""), nil
+			return Key, nil
 		},
 	)
 
@@ -124,7 +143,7 @@ func valid(authorization []string) bool {
 
 	claims, _ := token.Claims.(*MyCustomClaims)
 	fmt.Println(claims)
-	if !claimsStruct.HasScope("read:usders") {
+	if !claimsStruct.HasScope("read:messages") {
 		fmt.Println("forbidden")
 		return false
 	}

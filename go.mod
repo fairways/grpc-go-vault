@@ -7,6 +7,7 @@ require (
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/hashicorp/vault/api v1.3.1
 	github.com/hashicorp/vault/sdk v0.3.0
+	github.com/prometheus/common v0.9.1
 	github.com/stretchr/testify v1.7.1 // indirect
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
