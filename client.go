@@ -89,7 +89,6 @@ func main() {
 
 	x := "Jamie"
 	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
-	fmt.Printf("%+v", perRPC)
 	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
 	if err != nil {
 		log.Fatalf("did not connect: %s", err)
@@ -137,7 +136,6 @@ func fetchToken(id string, secret string, url string, audience string, grantType
 	}
 
 	json.Unmarshal(responseData, &tokenObject)
-	fmt.Printf("%s", responseData)
 	return &oauth2.Token{
 		AccessToken: tokenObject.AccessToken,
 	}
