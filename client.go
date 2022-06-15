@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	vault "github.com/hashicorp/vault/api"
@@ -38,7 +39,7 @@ func main() {
 	//vault
 
 	vaultClient, err := vault.NewClient(&vault.Config{
-		Address: "http://localhost:8200",
+		Address: os.Getenv("VAULT_ADDR"),
 	})
 	if err != nil {
 		fmt.Printf("failed to create vault client: %v", err)
@@ -88,7 +89,6 @@ func main() {
 
 	x := "Jamie"
 	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
-	fmt.Println("got the token boy")
 	fmt.Printf("%+v", perRPC)
 	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
 	if err != nil {
@@ -101,7 +101,7 @@ func main() {
 	for {
 		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: x})
 		if err != nil {
-			log.Fatalf("Error when calling SayHello: %s", err)
+			log.Fatalf("error when calling SayHello: %s", err)
 		}
 		log.Printf("Response from Server: %s", response.GetName())
 		n := rand.Intn(10)

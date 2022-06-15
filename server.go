@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"net"
+	"os"
 	"strings"
 )
 
@@ -25,8 +26,12 @@ type server struct {
 
 var (
 	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
-	errInvalidScope    = status.Errorf(codes.Unauthenticated, "invalid sope")
+	errInvalidScope    = status.Errorf(codes.Unauthenticated, "invalid scope")
 	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
+	errInvalidAudience = status.Errorf(codes.Unauthenticated, "invalid audience")
+	errInvalidIssuer   = status.Errorf(codes.Unauthenticated, "invalid issuer")
+	errInvalidSubject  = status.Errorf(codes.Unauthenticated, "invalid subject")
+	errMissingToken    = status.Errorf(codes.NotFound, "missing token")
 	authToken          string
 	Key                *rsa.PublicKey
 )
@@ -36,7 +41,7 @@ func main() {
 	//vault
 
 	vaultClient, err := vault.NewClient(&vault.Config{
-		Address: "http://localhost:8200",
+		Address: os.Getenv("VAULT_ADDR"),
 	})
 	if err != nil {
 		fmt.Printf("failed to create vault client: %v", err)
@@ -56,12 +61,12 @@ func main() {
 
 	parsedCertBundle, err := certutil.ParsePKIMap(secret.Data)
 	if err != nil {
-		fmt.Errorf("Error parsing secret: %s", err)
+		log.Errorf("errror parsing secret: %s", err)
 	}
 
 	tlsConfig, err := parsedCertBundle.GetTLSConfig(certutil.TLSServer)
 	if err != nil {
-		fmt.Errorf("Could not get TLS config: %s", err)
+		log.Errorf("failed to get TLS config: %s", err)
 	}
 
 	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
@@ -112,15 +117,38 @@ func ensureValidToken(ctx context.Context, req interface{}, info *grpc.UnaryServ
 	if !ok {
 		return nil, errMissingMetadata
 	}
-	if !valid(md["authorization"]) {
+
+	token, claims, err := ParseToken(md["authorization"])
+	if err != nil {
+		log.Errorf("failed to parse token: %s", err)
+	}
+
+	if !token.Valid {
 		return nil, errInvalidToken
 	}
+
+	if !claims.HasScope(os.Getenv("AUTH0_SCOPE")) {
+		return nil, errInvalidScope
+	}
+
+	if !claims.VerifyAudience(os.Getenv("AUTH0_AUDIENCE"), true) {
+		return nil, errInvalidAudience
+	}
+
+	if !claims.VerifyIssuer(os.Getenv("AUTH0_ISSUER"), true) {
+		return nil, errInvalidIssuer
+	}
+
+	if claims.Subject != os.Getenv("AUTH0_SUBJECT") {
+		return nil, errInvalidSubject
+	}
+
 	return handler(ctx, req)
 }
 
-func valid(authorization []string) bool {
+func ParseToken(authorization []string) (*jwt.Token, *MyCustomClaims, error) {
 	if len(authorization) < 1 {
-		return false
+		return nil, nil, errMissingToken
 	}
 	accessToken := strings.TrimPrefix(authorization[0], "Bearer ")
 
@@ -137,20 +165,11 @@ func valid(authorization []string) bool {
 			return Key, nil
 		},
 	)
-
 	if err != nil {
-		fmt.Errorf("invalid token: %w", err)
+		return nil, nil, errInvalidToken
 	}
 
-	if !token.Valid {
-		return false
-	}
-
-	if !claimsStruct.HasScope("read:messages") {
-		fmt.Println(errInvalidScope)
-		return false
-	}
-	return true
+	return token, &claimsStruct, nil
 }
 
 func (c MyCustomClaims) HasScope(expectedScope string) bool {
