@@ -86,8 +86,6 @@ func main() {
 	if err != nil {
 		log.Error(err)
 	}
-	fmt.Println(Key)
-
 	// grpc server
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 3000))
