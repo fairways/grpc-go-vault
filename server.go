@@ -163,7 +163,6 @@ func valid(authorization []string) bool {
 		fmt.Println("forbidden")
 		return false
 	}
-	fmt.Println("access granted")
 	return true
 }
 

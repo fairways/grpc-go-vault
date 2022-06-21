@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/goombaio/namegenerator"
+	"github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
@@ -86,6 +87,10 @@ func main() {
 	audience := authTokenData["audience"].(string)
 
 	//grpc
+	opts := []grpc_retry.CallOption{
+		grpc_retry.WithMax(2),
+		grpc_retry.WithBackoff(grpc_retry.BackoffLinear(100 * time.Millisecond)),
+	}
 
 	seed := time.Now().UTC().UnixNano()
 	nameGenerator := namegenerator.NewNameGenerator(seed)
@@ -93,7 +98,7 @@ func main() {
 	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
 	fmt.Println("got the token boy")
 	fmt.Printf("%+v", perRPC)
-	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
+	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC), grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(opts...)))
 	if err != nil {
 		log.Fatalf("did not connect: %s", err)
 	}
