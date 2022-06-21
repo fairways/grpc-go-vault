@@ -6,3 +6,17 @@ services:
     environment:
       - VAULT_DEV_ROOT_TOKEN_ID=root
       # - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:1234
+  cassandra:
+    image: docker.io/bitnami/cassandra:4.0
+    ports:
+      - '7000:7000'
+      - '9042:9042'
+    volumes:
+      - 'cassandra_data:/bitnami'
+    environment:
+      - CASSANDRA_SEEDS=cassandra
+      - CASSANDRA_PASSWORD_SEEDER=yes
+      - CASSANDRA_PASSWORD=cassandra
+volumes:
+  cassandra_data:
+    driver: local

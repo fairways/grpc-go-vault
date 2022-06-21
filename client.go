@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/goombaio/namegenerator"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
@@ -86,7 +87,9 @@ func main() {
 
 	//grpc
 
-	x := "Jamie"
+	seed := time.Now().UTC().UnixNano()
+	nameGenerator := namegenerator.NewNameGenerator(seed)
+
 	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
 	fmt.Println("got the token boy")
 	fmt.Printf("%+v", perRPC)
@@ -99,7 +102,8 @@ func main() {
 	client := pb.NewHelloServiceClient(conn)
 
 	for {
-		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: x})
+		name := nameGenerator.Generate()
+		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: name})
 		if err != nil {
 			log.Fatalf("Error when calling SayHello: %s", err)
 		}

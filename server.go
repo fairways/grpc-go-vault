@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
+	"github.com/gocql/gocql"
 	"github.com/golang-jwt/jwt"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
@@ -28,10 +29,21 @@ var (
 	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
 	authToken          string
 	Key                *rsa.PublicKey
+	DB                 *gocql.Session
 )
 
 func main() {
-
+	cluster := gocql.NewCluster("localhost")
+	cluster.Keyspace = "example"
+	cluster.Authenticator = gocql.PasswordAuthenticator{
+		Username: "cassandra",
+		Password: "cassandra",
+	}
+	var err error
+	DB, err = cluster.CreateSession()
+	if err != nil {
+		log.Error(err)
+	}
 	//vault
 
 	vaultClient, err := vault.NewClient(&vault.Config{
@@ -98,7 +110,11 @@ func main() {
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRequest, error) {
 	fmt.Printf("Received: %v\n", in.GetName())
-	return &pb.HelloRequest{Name: "Hello " + in.GetName()}, nil
+
+	if err := DB.Query(`INSERT into users(id, first_name) values(uuid(), ?)`, in.GetName()).Exec(); err != nil {
+		return &pb.HelloRequest{Name: "not inserted"}, err
+	}
+	return &pb.HelloRequest{Name: "Inserted record"}, nil
 }
 
 type MyCustomClaims struct {
