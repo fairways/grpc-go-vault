@@ -81,7 +81,7 @@ func main() {
 
 	clientSecret := authTokenData["secret"].(string)
 
-	url := authTokenData["domain"].(string)
+	url := authTokenData["url"].(string)
 
 	audience := authTokenData["audience"].(string)
 
