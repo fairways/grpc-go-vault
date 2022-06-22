@@ -43,7 +43,6 @@ resource "vault_pki_secret_backend_role" "role" {
   key_bits         = 4096
   allowed_domains  = ["example.com"]
   allow_subdomains = true
-
 }
 
 resource "vault_mount" "hello-service" {

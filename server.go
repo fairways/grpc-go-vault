@@ -6,9 +6,12 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/golang-jwt/jwt"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -16,6 +19,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -86,13 +90,32 @@ func main() {
 	if err != nil {
 		log.Error(err)
 	}
+
+	// metrics
+	reg := prometheus.NewRegistry()
+	grpcMetrics := grpc_prometheus.NewServerMetrics()
+	customizedCounterMetric := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "demo_server_say_hello_method_handle_count",
+		Help: "Total number of RPCs handled on the server.",
+	}, []string{"name"})
+	// Register client metrics to registry.
+	reg.MustRegister(grpcMetrics, customizedCounterMetric)
+
+	httpServer := &http.Server{Handler: promhttp.HandlerFor(reg, promhttp.HandlerOpts{}), Addr: fmt.Sprintf(":%d", 9094)}
+
+	// Start your http server for prometheus.
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil {
+			log.Fatal("Unable to start a http server.")
+		}
+	}()
 	// grpc server
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 3000))
 	if err != nil {
 		fmt.Printf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer(grpc.Creds(tlsCredentials), grpc.UnaryInterceptor(ensureValidToken))
+	s := grpc.NewServer(grpc.Creds(tlsCredentials), grpc.ChainUnaryInterceptor(ensureValidToken, grpcMetrics.UnaryServerInterceptor()))
 	pb.RegisterHelloServiceServer(s, &server{})
 
 	if err := s.Serve(lis); err != nil {

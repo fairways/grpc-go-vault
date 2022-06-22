@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-cmp v0.5.7 // indirect
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/vault/api v1.3.1
 	github.com/hashicorp/vault/sdk v0.3.0
 	github.com/prometheus/common v0.9.1
