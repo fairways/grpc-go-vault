@@ -10,12 +10,15 @@ message HelloRequest {
     string name = 1;
 }
 
-service CreateUser {
+service CreateUserService {
     rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
 }
 
 message CreateUserRequest {
-    string name = 1;
+    string id = 1;
+    string name = 2;
 }
 
-message CreateUserResponse {}
+message CreateUserResponse {
+    string id = 1;
+}

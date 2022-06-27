@@ -110,11 +110,14 @@ func main() {
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRequest, error) {
 	fmt.Printf("Received: %v\n", in.GetName())
-
 	if err := DB.Query(`INSERT into users(id, first_name) values(uuid(), ?)`, in.GetName()).Exec(); err != nil {
 		return &pb.HelloRequest{Name: "not inserted"}, err
 	}
-	return &pb.HelloRequest{Name: "Inserted record"}, nil
+	return &pb.HelloRequest{Name: ""}, nil
+}
+
+func (s *server) CreateUser(ctx context.Context, in *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
+	return &pb.CreateUserResponse{Id: ""}, nil
 }
 
 type MyCustomClaims struct {

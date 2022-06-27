@@ -13,10 +13,12 @@ services:
       - '9042:9042'
     volumes:
       - 'cassandra_data:/bitnami'
+      - './init/:/docker-entrypoint-initdb.d'
     environment:
       - CASSANDRA_SEEDS=cassandra
       - CASSANDRA_PASSWORD_SEEDER=yes
       - CASSANDRA_PASSWORD=cassandra
+
 volumes:
   cassandra_data:
     driver: local
