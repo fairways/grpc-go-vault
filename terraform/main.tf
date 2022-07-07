@@ -49,15 +49,17 @@ resource "vault_mount" "hello-service" {
   path        = "hello-service"
   type        = "kv-v2"
 }
-
+#
 resource "vault_generic_secret" "hello-service-token" {
   path = "${vault_mount.hello-service.path}/auth0"
   data_json = <<EOT
 {
- "id": "${var.auth0_id}",
- "secret": "${var.auth0_secret}",
- "domain": "${var.auth0_domain}",
- "audience": "${var.auth0_audience}"
+  "audience": "${var.auth0_audience}",
+  "id": "${var.auth0_id}",
+  "secret": "${var.auth0_secret}",
+  "url": "${var.auth0_url}",
+  "pem": "${var.auth0_pem}",
+
 }
 EOT
 }
@@ -70,10 +72,14 @@ variable "auth0_secret" {
   type=string
 }
 
-variable "auth0_domain" {
-  type = string
+variable "auth0_url" {
+  type=string
 }
 
 variable "auth0_audience" {
+  type=string
+}
+
+variable "auth0_pem" {
   type = string
 }

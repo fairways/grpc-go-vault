@@ -5,20 +5,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"google.golang.org/grpc/credentials/oauth"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"time"
-
+      
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"math/rand"
+	"google.golang.org/grpc/credentials/oauth"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"time"
 )
 
 type TokenReponse struct {
@@ -85,10 +90,9 @@ func main() {
 
 	audience := authTokenData["audience"].(string)
 
-	//grpc
-
-	x := "Jamie"
+	// grpc
 	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
+
 	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
 	if err != nil {
 		log.Fatalf("did not connect: %s", err)
@@ -98,13 +102,12 @@ func main() {
 	client := pb.NewHelloServiceClient(conn)
 
 	for {
-		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: x})
+		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: "Jamie"})
 		if err != nil {
 			log.Fatalf("error when calling SayHello: %s", err)
 		}
 		log.Printf("Response from Server: %s", response.GetName())
-		n := rand.Intn(10)
-		time.Sleep(time.Duration(n) * time.Second)
+		time.Sleep(time.Duration(1) * time.Second)
 	}
 }
 
