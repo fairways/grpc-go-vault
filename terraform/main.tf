@@ -58,7 +58,7 @@ resource "vault_generic_secret" "hello-service-token" {
   "id": "${var.auth0_id}",
   "secret": "${var.auth0_secret}",
   "url": "${var.auth0_url}",
-  "pem": "${var.auth0_pem}",
+  "pem": "${var.auth0_pem}"
 
 }
 EOT

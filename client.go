@@ -5,14 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-	"google.golang.org/grpc/credentials/oauth"
-	"io/ioutil"
-	"log"
-	"net/http"
 	"os"
-	"time"
-      
+
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"

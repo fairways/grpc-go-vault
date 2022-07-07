@@ -5,9 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
-	"github.com/gocql/gocql"
 	"github.com/golang-jwt/jwt"
-	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/jamiewhitney/auth-jwt-grpc"
@@ -16,9 +14,7 @@ import (
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/status"
 	"net"
 
 	"os"
@@ -30,11 +26,8 @@ type server struct {
 }
 
 var (
-	Key                *rsa.PublicKey
-	app                *newrelic.Application
-	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
-	errInvalidScope    = status.Errorf(codes.Unauthenticated, "invalid scope")
-	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
+	Key *rsa.PublicKey
+	app *newrelic.Application
 )
 
 func main() {
