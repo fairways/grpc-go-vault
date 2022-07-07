@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gocql/gocql"
 	"github.com/golang-jwt/jwt"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/jamiewhitney/auth-jwt-grpc"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"net"
+
 	"os"
 	"time"
 )
@@ -29,9 +31,9 @@ type server struct {
 
 var (
 	Key                *rsa.PublicKey
-	DB                 *gocql.Session
 	app                *newrelic.Application
 	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
+	errInvalidScope    = status.Errorf(codes.Unauthenticated, "invalid scope")
 	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
 )
 
@@ -61,7 +63,7 @@ func main() {
 	////vault
 
 	vaultClient, err := vault.NewClient(&vault.Config{
-		Address: "http://localhost:8200",
+		Address: os.Getenv("VAULT_ADDR"),
 	})
 	if err != nil {
 		fmt.Printf("failed to create vault client: %v", err)
@@ -113,6 +115,7 @@ func main() {
 	if err != nil {
 		log.Printf("failed to listen: %v", err)
 	}
+
 	s := grpc.NewServer(grpc.Creds(tlsCredentials), grpc.ChainUnaryInterceptor(authorizer.EnsureValidToken, nrgrpc.UnaryServerInterceptor(app)))
 	pb.RegisterHelloServiceServer(s, &server{})
 

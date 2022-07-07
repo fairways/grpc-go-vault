@@ -43,7 +43,6 @@ resource "vault_pki_secret_backend_role" "role" {
   key_bits         = 4096
   allowed_domains  = ["example.com"]
   allow_subdomains = true
-
 }
 
 resource "vault_mount" "hello-service" {
@@ -60,6 +59,7 @@ resource "vault_generic_secret" "hello-service-token" {
   "secret": "${var.auth0_secret}",
   "url": "${var.auth0_url}",
   "pem": "${var.auth0_pem}",
+
 }
 EOT
 }

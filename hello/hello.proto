@@ -9,3 +9,16 @@ service HelloService {
 message HelloRequest {
     string name = 1;
 }
+
+service CreateUserService {
+    rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {}
+}
+
+message CreateUserRequest {
+    string id = 1;
+    string name = 2;
+}
+
+message CreateUserResponse {
+    string id = 1;
+}

@@ -5,6 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"google.golang.org/grpc/credentials/oauth"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"time"
+      
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
@@ -36,7 +44,7 @@ func main() {
 	//vault
 
 	vaultClient, err := vault.NewClient(&vault.Config{
-		Address: "http://localhost:8200",
+		Address: os.Getenv("VAULT_ADDR"),
 	})
 	if err != nil {
 		fmt.Printf("failed to create vault client: %v", err)
@@ -96,7 +104,7 @@ func main() {
 	for {
 		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: "Jamie"})
 		if err != nil {
-			log.Fatalf("Error when calling SayHello: %s", err)
+			log.Fatalf("error when calling SayHello: %s", err)
 		}
 		log.Printf("Response from Server: %s", response.GetName())
 		time.Sleep(time.Duration(1) * time.Second)
@@ -131,7 +139,6 @@ func fetchToken(id string, secret string, url string, audience string, grantType
 	}
 
 	json.Unmarshal(responseData, &tokenObject)
-	fmt.Printf("%s", responseData)
 	return &oauth2.Token{
 		AccessToken: tokenObject.AccessToken,
 	}
