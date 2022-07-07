@@ -5,21 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"google.golang.org/grpc/credentials/oauth"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"time"
-
-	"github.com/goombaio/namegenerator"
-	"github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"math/rand"
+	"google.golang.org/grpc/credentials/oauth"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"time"
 )
 
 type TokenReponse struct {
@@ -86,19 +82,10 @@ func main() {
 
 	audience := authTokenData["audience"].(string)
 
-	//grpc
-	opts := []grpc_retry.CallOption{
-		grpc_retry.WithMax(2),
-		grpc_retry.WithBackoff(grpc_retry.BackoffLinear(100 * time.Millisecond)),
-	}
-
-	seed := time.Now().UTC().UnixNano()
-	nameGenerator := namegenerator.NewNameGenerator(seed)
-
+	// grpc
 	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
-	fmt.Println("got the token boy")
-	fmt.Printf("%+v", perRPC)
-	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC), grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(opts...)))
+
+	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
 	if err != nil {
 		log.Fatalf("did not connect: %s", err)
 	}
@@ -107,14 +94,12 @@ func main() {
 	client := pb.NewHelloServiceClient(conn)
 
 	for {
-		name := nameGenerator.Generate()
-		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: name})
+		response, err := client.SayHello(context.Background(), &pb.HelloRequest{Name: "Jamie"})
 		if err != nil {
 			log.Fatalf("Error when calling SayHello: %s", err)
 		}
 		log.Printf("Response from Server: %s", response.GetName())
-		n := rand.Intn(10)
-		time.Sleep(time.Duration(n) * time.Second)
+		time.Sleep(time.Duration(1) * time.Second)
 	}
 }
 

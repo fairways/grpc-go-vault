@@ -9,15 +9,18 @@ import (
 	"github.com/golang-jwt/jwt"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/jamiewhitney/auth-jwt-grpc"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
-	"github.com/prometheus/common/log"
+	"github.com/newrelic/go-agent/v3/integrations/nrgrpc"
+	"github.com/newrelic/go-agent/v3/newrelic"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"net"
-	"strings"
+	"os"
+	"time"
 )
 
 type server struct {
@@ -25,26 +28,37 @@ type server struct {
 }
 
 var (
-	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
-	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
-	authToken          string
 	Key                *rsa.PublicKey
 	DB                 *gocql.Session
+	app                *newrelic.Application
+	errMissingMetadata = status.Errorf(codes.InvalidArgument, "missing metadata")
+	errInvalidToken    = status.Errorf(codes.Unauthenticated, "invalid token")
 )
 
 func main() {
-	cluster := gocql.NewCluster("localhost")
-	cluster.Keyspace = "example"
-	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: "cassandra",
-		Password: "cassandra",
-	}
-	var err error
-	DB, err = cluster.CreateSession()
+	log := logrus.New()
+	log.Formatter = &logrus.JSONFormatter{}
+
+	//tracing
+	app, err := newrelic.NewApplication(
+		newrelic.ConfigAppName("gRPC Server"),
+		newrelic.ConfigLicense(MustMapEnv("NEWRELIC_API_KEY")),
+		func(config *newrelic.Config) {
+			config.Labels = map[string]string{
+				"environment": "production",
+				"region":      "eu-west-1",
+			}
+		},
+	)
 	if err != nil {
 		log.Error(err)
 	}
-	//vault
+	log.Infof("waiting for connection %s,", time.Now())
+	if err := app.WaitForConnection(30 * time.Second); err != nil {
+		log.Error(err)
+	}
+	log.Infof("connected %s,", time.Now())
+	////vault
 
 	vaultClient, err := vault.NewClient(&vault.Config{
 		Address: "http://localhost:8200",
@@ -67,12 +81,12 @@ func main() {
 
 	parsedCertBundle, err := certutil.ParsePKIMap(secret.Data)
 	if err != nil {
-		fmt.Errorf("Error parsing secret: %s", err)
+		log.Errorf("Error parsing secret: %s", err)
 	}
 
 	tlsConfig, err := parsedCertBundle.GetTLSConfig(certutil.TLSServer)
 	if err != nil {
-		fmt.Errorf("Could not get TLS config: %s", err)
+		log.Errorf("Could not get TLS config: %v", err)
 	}
 
 	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
@@ -86,96 +100,39 @@ func main() {
 
 	keyParse := keyData.Data["data"].(map[string]interface{})
 
-	keyYeah := keyParse["public_cert"].(string)
+	keyYeah := keyParse["pem"].(string)
 
 	Key, err = jwt.ParseRSAPublicKeyFromPEM([]byte(keyYeah))
 	if err != nil {
 		log.Error(err)
 	}
-	fmt.Println(Key)
 
+	authorizer := auth.NewAuthorizer(MustMapEnv("AUTH0_SCOPE"), MustMapEnv("AUTH0_AUDIENCE"), MustMapEnv("AUTH0_ISSUER"), MustMapEnv("AUTH0_SUBJECT"), Key)
 	// grpc server
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", 3000))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", "3000"))
 	if err != nil {
-		fmt.Printf("failed to listen: %v", err)
+		log.Printf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer(grpc.Creds(tlsCredentials), grpc.UnaryInterceptor(ensureValidToken))
+	s := grpc.NewServer(grpc.Creds(tlsCredentials), grpc.ChainUnaryInterceptor(authorizer.EnsureValidToken, nrgrpc.UnaryServerInterceptor(app)))
 	pb.RegisterHelloServiceServer(s, &server{})
 
 	if err := s.Serve(lis); err != nil {
-		fmt.Printf("failed to serve: %s", err)
+		log.Printf("failed to serve: %s", err)
 	}
 }
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRequest, error) {
 	fmt.Printf("Received: %v\n", in.GetName())
-	if err := DB.Query(`INSERT into users(id, first_name) values(uuid(), ?)`, in.GetName()).Exec(); err != nil {
-		return &pb.HelloRequest{Name: "not inserted"}, err
-	}
-	return &pb.HelloRequest{Name: ""}, nil
+
+	hostname, _ := os.Hostname()
+	app.RecordCustomMetric("SayHello", 1)
+	return &pb.HelloRequest{Name: hostname}, nil
 }
 
-func (s *server) CreateUser(ctx context.Context, in *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
-	return &pb.CreateUserResponse{Id: ""}, nil
-}
-
-type MyCustomClaims struct {
-	Scope string `json:"scope"`
-	jwt.StandardClaims
-}
-
-func ensureValidToken(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return nil, errMissingMetadata
+func MustMapEnv(key string) string {
+	env := os.Getenv(key)
+	if env == "" {
+		panic(fmt.Sprintf("environment variable %s not set", key))
 	}
-	if !valid(md["authorization"]) {
-		return nil, errInvalidToken
-	}
-	return handler(ctx, req)
-}
-
-func valid(authorization []string) bool {
-	if len(authorization) < 1 {
-		return false
-	}
-	accessToken := strings.TrimPrefix(authorization[0], "Bearer ")
-
-	claimsStruct := MyCustomClaims{}
-	token, err := jwt.ParseWithClaims(
-		accessToken,
-		&claimsStruct,
-		func(token *jwt.Token) (interface{}, error) {
-			_, ok := token.Method.(*jwt.SigningMethodRSA)
-			if !ok {
-				return nil, fmt.Errorf("unexpected token signing method")
-			}
-
-			return Key, nil
-		},
-	)
-
-	if err != nil {
-		fmt.Errorf("invalid token: %w", err)
-	}
-
-	claims, _ := token.Claims.(*MyCustomClaims)
-	fmt.Println(claims)
-	if !claimsStruct.HasScope("read:messages") {
-		fmt.Println("forbidden")
-		return false
-	}
-	return true
-}
-
-func (c MyCustomClaims) HasScope(expectedScope string) bool {
-	result := strings.Split(c.Scope, " ")
-	for i := range result {
-		if result[i] == expectedScope {
-			return true
-		}
-	}
-
-	return false
+	return env
 }
