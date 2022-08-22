@@ -20,7 +20,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: SERVER_ADDR
-              value: "grpc-server.svc.default"
+              value: "grpc-server.default.svc"
 ---
 apiVersion: apps/v1
 kind: Deployment
