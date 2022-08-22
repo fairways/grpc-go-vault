@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client-deployment
+  labels:
+    app: grpc-client
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: grpc-client
+  template:
+    metadata:
+      labels:
+        app: grpc-client
+    spec:
+      containers:
+        - name: grpc-client
+          image: azarec/grpc-client:latest
+          imagePullPolicy: Always
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-deployment
+  labels:
+    app: grpc-server
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      app: grpc-server
+  template:
+    metadata:
+      labels:
+        app: grpc-server
+    spec:
+      containers:
+        - name: grpc-server
+          image: azarec/grpc-server:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+          resources:
+           requests:
+             cpu: "250m"
+           limits:
+             cpu: "250m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-server-service
+spec:
+  type: ClusterIP
+  selector:
+    app: grpc-server
+  ports:
+    - name: grpc
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: grpc-server-hpa
+  labels:
+    app: grpc-server-hpa
+spec:
+  maxReplicas: 20
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: server-deployment
+  minReplicas: 3
+  targetCPUUtilizationPercentage: 50
