@@ -16,11 +16,11 @@ spec:
     spec:
       containers:
         - name: grpc-client
-          image: azarec/grpc-client:latest
+          image: 974523684754.dkr.ecr.eu-west-1.amazonaws.com/grpc-client:latest
           imagePullPolicy: Always
           env:
             - name: SERVER_ADDR
-              value: "grpc-server.default.svc:3000"
+              value: "grpc-server-service.default.svc:3000"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: grpc-server
-          image: azarec/grpc-server:latest
+          image: 974523684754.dkr.ecr.eu-west-1.amazonaws.com/grpc-server:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
