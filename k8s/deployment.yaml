@@ -21,6 +21,8 @@ spec:
           env:
             - name: SERVER_ADDR
               value: "grpc-server-service.default.svc:3000"
+      imagePullSecrets:
+        - name: regcred
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -52,6 +54,8 @@ spec:
              cpu: "250m"
            limits:
              cpu: "250m"
+      imagePullSecrets:
+        - name: regcred
   strategy:
     type: RollingUpdate
     rollingUpdate:
