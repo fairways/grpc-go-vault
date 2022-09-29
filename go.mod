@@ -3,8 +3,12 @@ module github.com/jamiewhitney/grpc-go-vault
 go 1.16
 
 require (
+	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/hashicorp/vault/api v1.8.0
+	github.com/hashicorp/vault/sdk v0.6.0
 	github.com/jamiewhitney/auth-jwt-grpc v1.1.0
-	github.com/newrelic/go-agent/v3 v3.12.0
+	github.com/newrelic/go-agent/v3 v3.18.2
+	github.com/newrelic/go-agent/v3/integrations/nrgrpc v1.3.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.7.1 // indirect
 	golang.org/x/net v0.0.0-20220630215102-69896b714898 // indirect

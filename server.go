@@ -5,7 +5,6 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
-	"github.com/golang-jwt/jwt"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/jamiewhitney/auth-jwt-grpc"
@@ -53,7 +52,8 @@ func main() {
 		log.Error(err)
 	}
 	log.Infof("connected %s,", time.Now())
-	////vault
+
+	//vault
 
 	vaultClient, err := vault.NewClient(&vault.Config{
 		Address: os.Getenv("VAULT_ADDR"),
@@ -87,22 +87,7 @@ func main() {
 	tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	tlsCredentials := credentials.NewTLS(tlsConfig)
 
-	// JWT Public Cert
-	keyData, err := vaultClient.Logical().Read("hello-service/data/auth0")
-	if err != nil {
-		log.Error(err)
-	}
-
-	keyParse := keyData.Data["data"].(map[string]interface{})
-
-	keyYeah := keyParse["pem"].(string)
-
-	Key, err = jwt.ParseRSAPublicKeyFromPEM([]byte(keyYeah))
-	if err != nil {
-		log.Error(err)
-	}
-
-	authorizer := auth.NewAuthorizer(MustMapEnv("AUTH0_SCOPE"), MustMapEnv("AUTH0_AUDIENCE"), MustMapEnv("AUTH0_ISSUER"), MustMapEnv("AUTH0_SUBJECT"), Key)
+	authorizer := auth.NewAuthorizer(MustMapEnv("AUTH0_SCOPE"), MustMapEnv("AUTH0_AUDIENCE"), MustMapEnv("AUTH0_ISSUER"), MustMapEnv("AUTH0_SUBJECT"), MustMapEnv("JWKS_URL"))
 	// grpc server
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", "3000"))
 	if err != nil {
