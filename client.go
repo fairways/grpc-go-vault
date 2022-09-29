@@ -1,22 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	"github.com/jamiewhitney/auth-jwt-grpc"
 	"os"
 
 	vault "github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	pb "github.com/jamiewhitney/grpc-go-vault/hello"
-	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/oauth"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"time"
 )
 
@@ -85,7 +81,7 @@ func main() {
 	audience := authTokenData["audience"].(string)
 
 	// grpc
-	perRPC := oauth.NewOauthAccess(fetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
+	perRPC := oauth.NewOauthAccess(auth.FetchToken(clientToken, clientSecret, url, audience, "client_credentials"))
 
 	conn, err := grpc.Dial(":3000", grpc.WithTransportCredentials(tlsCredentials), grpc.WithPerRPCCredentials(perRPC))
 	if err != nil {
@@ -102,38 +98,5 @@ func main() {
 		}
 		log.Printf("Response from Server: %s", response.GetName())
 		time.Sleep(time.Duration(1) * time.Second)
-	}
-}
-
-func fetchToken(id string, secret string, url string, audience string, grantType string) *oauth2.Token {
-	var tokenObject TokenReponse
-
-	data := TokenRequest{
-		ClientId:     id,
-		ClientSecret: secret,
-		Audience:     audience,
-		GrantType:    grantType,
-	}
-
-	payload, _ := json.Marshal(data)
-
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-
-	req.Header.Add("content-type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	defer res.Body.Close()
-	responseData, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	json.Unmarshal(responseData, &tokenObject)
-	return &oauth2.Token{
-		AccessToken: tokenObject.AccessToken,
 	}
 }
