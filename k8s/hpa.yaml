@@ -10,5 +10,5 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: server-deployment
-  minReplicas: 5
+  minReplicas: 8
   targetCPUUtilizationPercentage: 20
