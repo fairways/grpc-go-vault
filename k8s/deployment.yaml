@@ -18,6 +18,9 @@ spec:
         - name: grpc-client
           image: azarec/grpc-client:latest
           imagePullPolicy: Always
+          env:
+            - name: SERVER_ADDR
+              value: "grpc-server-service.svc"
 ---
 apiVersion: apps/v1
 kind: Deployment
